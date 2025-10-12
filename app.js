@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const EXPIRATION_HOURS = 2;
     let originalSubtitles = []; 
     let processedSubtitles = [];
+    let originalSrtFilename = null; // 用於儲存原始 SRT 檔案名稱
     const PRESET_CTAS = {
         pupu: `<h2>喜歡噗噗聊聊嗎？</h2><p>如果你想要了解更多關於教育及<a href="https://bit.ly/PuChatPodcast" target="_blank" rel="noopener">Podcast</a>的內容，歡迎追蹤我們的節目，一起探索教育的無限可能。</p><ul><li><a href="https://bit.ly/PuChatFB">噗噗聊聊粉絲專頁</a></li><li><a href="https://bit.ly/PuChatYT">噗噗聊聊Youtube頻道</a></li><li><a href="https://bit.ly/PuChatPodcast">噗噗聊聊Podcast</a></li><li><a href="https://bit.ly/aliangblog">ㄚ亮笑長練功坊Blog</a></li></ul>`,
         izakaya: `<h2>🎁 喜歡我們的課程嗎？</h2><p>如果你想要學習更多學科教學知識與科技應用，歡迎訂閱謙懿科技Youtube頻道，記得按讚追蹤我們的節目，一起探索教育的無限可能。</p><ul><li>謙懿科技Youtube：<a href="http://www.youtube.com/@morganfang0905" target="_blank">http://www.youtube.com/@morganfang0905</a></li><li>ㄚ亮笑長練功坊Blog：<a href="https://bit.ly/aliangblog" target="_blank">https://bit.ly/aliangblog</a></li></ul>`
@@ -191,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
     srtFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
+        originalSrtFilename = file.name; // 記錄原始檔名
         const reader = new FileReader();
         reader.onload = (e) => loadSrtContent(e.target.result);
         reader.readAsText(file);
@@ -198,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. 貼上/輸入事件 (監聽 srtTextArea)
     srtTextArea.addEventListener('input', () => {
+        originalSrtFilename = null; // 貼上內容時，清除原始檔名
         loadSrtContent(srtTextArea.value);
     });
 
@@ -219,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (files.length > 0) {
             const file = files[0];
             if (file.name.toLowerCase().endsWith('.srt')) {
+                originalSrtFilename = file.name; // 記錄原始檔名
                 const reader = new FileReader();
                 reader.onload = (event) => loadSrtContent(event.target.result);
                 reader.readAsText(file);
@@ -285,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 清空變數
             originalSubtitles = [];
             processedSubtitles = [];
+            originalSrtFilename = null; // 清除原始檔名
         
             // 重置 SRT 輸入區
             srtTextArea.value = '';
@@ -868,11 +873,23 @@ ${ctaHtml}
             return `${sub.id}\n${sub.startTime} --> ${sub.endTime}\n${sub.text}`;
         }).join('\n\n');
 
+        let downloadFilename = '';
+        if (originalSrtFilename) {
+            // 如果是讀取檔案，使用 "原檔名+已處理.srt"
+            const baseName = originalSrtFilename.replace(/\.srt$/i, ''); // 移除副檔名 .srt
+            downloadFilename = `${baseName}+已處理.srt`;
+        } else {
+            // 如果是貼上內容，使用 "YToolbox+日期.srt"
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+            downloadFilename = `YToolbox+${dateStr}.srt`;
+        }
+
         const blob = new Blob([srtContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `processed_subtitles_${new Date().getTime()}.srt`;
+        a.download = downloadFilename; // 使用動態產生的檔名
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
