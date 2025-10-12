@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 1. 檔案選擇事件
+    // 1. 檔案選擇事件 (由點擊連結觸發)
     srtFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -196,40 +196,40 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(file);
     });
 
-    // 2. 貼上/輸入事件
+    // 2. 貼上/輸入事件 (監聽 srtTextArea)
     srtTextArea.addEventListener('input', () => {
         loadSrtContent(srtTextArea.value);
     });
 
-    // 3. 拖曳事件
-    if (srtInputContainer) {
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            srtInputContainer.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        srtInputContainer.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            if (files.length > 0) {
-                const file = files[0];
-                if (file.name.toLowerCase().endsWith('.srt')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => loadSrtContent(e.target.result);
-                    reader.readAsText(file);
-                } else {
-                    alert('請拖曳 .srt 檔案。');
-                }
-            }
-        }, false);
+    // 3. 拖曳事件 (監聽 srtTextArea)
+    // 防止瀏覽器預設行為 (例如開啟檔案)
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        srtTextArea.addEventListener(eventName, preventDefaults, false);
+    });
 
-    // 4. 點擊上傳連結事件 (貼上優先，點擊連結才上傳)
+    // 處理放下檔案的邏輯
+    srtTextArea.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.toLowerCase().endsWith('.srt')) {
+                const reader = new FileReader();
+                reader.onload = (event) => loadSrtContent(event.target.result);
+                reader.readAsText(file);
+            } else {
+                alert('請拖曳 .srt 檔案。');
+            }
+        }
+    }, false);
+
+
+    // 4. 點擊上傳連結事件
     if (srtUploadLink) {
         srtUploadLink.addEventListener('click', (e) => {
             e.preventDefault(); 
