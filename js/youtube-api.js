@@ -1,5 +1,4 @@
 // js/youtube-api.js
-// This file will contain functions for interacting with the YouTube Data API via Netlify Serverless Functions.
 
 /**
  * Extracts the YouTube video ID from various URL formats.
@@ -15,7 +14,7 @@ function getYouTubeVideoId(url) {
 
 /**
  * Fetches the list of available subtitle tracks for a given YouTube video URL
- * by calling our Netlify serverless function.
+ * by calling our Netlify serverless function (which uses the official YouTube API).
  * @param {string} videoUrl The YouTube video URL.
  * @returns {Promise<Array>} A promise that resolves to an array of available subtitle tracks.
  */
@@ -40,7 +39,6 @@ async function fetchYouTubeSubtitles(videoUrl) {
         const availableTracks = await response.json();
         
         if (!availableTracks || availableTracks.length === 0) {
-            // It's better to inform the user that no subtitles are available.
             throw new Error("找不到這部影片的可用字幕。");
         }
 
@@ -48,23 +46,22 @@ async function fetchYouTubeSubtitles(videoUrl) {
 
     } catch (error) {
         console.error("Error in fetchYouTubeSubtitles:", error);
-        // Re-throw the error so the calling function (in the UI) can handle it.
         throw error;
     }
 }
 
 /**
- * Downloads the content of a specific subtitle track by calling our Netlify function.
- * @param {string} baseUrl The direct URL to the subtitle's timed text file.
+ * Downloads the content of a specific subtitle track using the scraper function.
+ * @param {string} videoId The ID of the YouTube video.
+ * @param {string} lang The language code of the subtitle track to download.
  * @returns {Promise<string>} A promise that resolves to the subtitle content in SRT format.
  */
-async function downloadYouTubeSubtitle(baseUrl) {
-    if (!baseUrl) {
-        throw new Error("無效的字幕下載網址。");
+async function downloadYouTubeSubtitle(videoId, lang) {
+    if (!videoId || !lang) {
+        throw new Error("無效的 videoId 或語言代碼。");
     }
     
-    // We need to encode the baseUrl to safely pass it as a URL query parameter.
-    const functionUrl = `/.netlify/functions/download-youtube-subtitle?baseUrl=${encodeURIComponent(baseUrl)}`;
+    const functionUrl = `/.netlify/functions/download-youtube-subtitle?videoId=${videoId}&lang=${lang}`;
 
     try {
         const response = await fetch(functionUrl);
@@ -74,7 +71,6 @@ async function downloadYouTubeSubtitle(baseUrl) {
             throw new Error(errorData.error || `無法下載字幕內容。`);
         }
 
-        // The function returns the SRT content as plain text.
         const srtContent = await response.text();
         return srtContent;
 
@@ -83,8 +79,3 @@ async function downloadYouTubeSubtitle(baseUrl) {
         throw error;
     }
 }
-
-// Export functions if this were a module, or make them globally available if included via script tag
-// For now, assuming script tag inclusion, so functions are global.
-// If using ES modules later:
-// export { getYouTubeVideoId, fetchYouTubeSubtitles };
