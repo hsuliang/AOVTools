@@ -30,8 +30,16 @@ const replaceReplacementInput = document.getElementById('replace-replacement-inp
 const replaceRulesList = document.getElementById('replace-rules-list');
 const clearAllRulesBtn = document.getElementById('clear-all-rules-btn');
 const timelineShiftInput = document.getElementById('timeline-shift');
-// [第二階段優化] - 新增返回編輯按鈕的選擇器
 const returnToEditBtn = document.getElementById('return-to-edit-btn');
+
+// YouTube Importer Elements
+const youtubeUrlInput = document.getElementById('youtube-url-input');
+const fetchYoutubeInfoBtn = document.getElementById('fetch-youtube-info-btn');
+const fetchLoader = document.getElementById('fetch-loader');
+const fetchBtnText = document.getElementById('fetch-btn-text');
+const youtubeLangSelectorContainer = document.getElementById('youtube-language-selector-container');
+const youtubeLangSelect = document.getElementById('youtube-language-select');
+const getYoutubeSrtBtn = document.getElementById('get-youtube-srt-btn');
 
 
 // --- 輔助函式 (模組級) ---
@@ -50,7 +58,6 @@ function setMode(mode) {
         smartArea.classList.remove('hidden');
         displayOriginal.classList.add('hidden');
         displayProcessed.classList.add('hidden');
-        // smartArea.value = ''; // 返回編輯時不清空
         smartArea.placeholder = "請在此貼上 SRT 內容，或將 .srt 檔案拖曳至此處";
         updateCharCount(smartArea.value);
     } else if (mode === 'preview') {
@@ -69,12 +76,31 @@ function updateBatchReplaceButtonStatus() {
     }
 }
 
-// [第二階段優化] - 新增返回編輯模式的函式
 function returnToEditMode() {
     setMode('input');
     smartArea.value = state.originalContentForPreview;
-    smartArea.dispatchEvent(new Event('input')); // 觸發 input 事件以更新UI
+    smartArea.dispatchEvent(new Event('input'));
     smartArea.focus();
+}
+
+// --- YouTube Importer UI Functions ---
+function setFetchButtonLoading(isLoading) {
+    if (isLoading) {
+        fetchBtnText.classList.add('hidden');
+        fetchLoader.classList.remove('hidden');
+        fetchYoutubeInfoBtn.disabled = true;
+    } else {
+        fetchBtnText.classList.remove('hidden');
+        fetchLoader.classList.add('hidden');
+        fetchYoutubeInfoBtn.disabled = false;
+    }
+}
+
+function resetYoutubeImporter() {
+    youtubeUrlInput.value = '';
+    youtubeLangSelectorContainer.classList.add('hidden');
+    youtubeLangSelect.innerHTML = '';
+    state.youtubeTracks = [];
 }
 
 // --- 清除函式 ---
@@ -92,17 +118,14 @@ function resetTab1() {
     state.batchReplaceRules = [];
     updateBatchReplaceButtonStatus();
     updateCharCount();
+    resetYoutubeImporter(); // Reset YouTube UI as well
 }
 
 // --- 初始化函式 ---
 function initializeTab1() {
     // --- 函式定義 ---
     async function handleAiFeature(type) {
-        // ########## FIX START ##########
-        // 移除內部的 API Key 檢查，因為外部的 app.js 邏輯已確保按鈕在無 Key 時被禁用
         const apiKey = sessionStorage.getItem('geminiApiKey');
-        // ########## FIX END ##########
-
         const content = state.processedSrtResult.trim() || smartArea.value.trim();
         if (!content) {
             showModal({ title: '錯誤', message: '沒有可用於 AI 處理的字幕內容。' });
@@ -266,7 +289,6 @@ function initializeTab1() {
             switchView('processed');
             updateCharCount(state.processedSrtResult);
             
-            // [第二階段優化] - 使用帶有按鈕的 Toast 進行流程引導
             showToast('字幕整理完成！', {
                 type: 'success',
                 action: {
@@ -298,6 +320,73 @@ function initializeTab1() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    // --- YouTube Importer Handlers ---
+    async function handleFetchYoutubeInfo() {
+        const url = youtubeUrlInput.value.trim();
+        if (!url) {
+            showToast('請貼上 YouTube 網址。', { type: 'error' });
+            return;
+        }
+
+        setFetchButtonLoading(true);
+        youtubeLangSelectorContainer.classList.add('hidden');
+
+        try {
+            const tracks = await fetchYouTubeSubtitles(url);
+            state.youtubeTracks = tracks; // Store tracks in state
+
+            youtubeLangSelect.innerHTML = ''; // Clear previous options
+            tracks.forEach(track => {
+                const option = document.createElement('option');
+                option.value = track.baseUrl;
+                let displayName = track.name || track.lang;
+                if (track.lang.includes('-') && !displayName.includes(`(${track.lang})`)) {
+                    displayName += ` (${track.lang})`;
+                }
+                if (track.name && (track.name.toLowerCase().includes('auto-generated') || track.name.includes('自動產生'))) {
+                    displayName += ' (自動)';
+                }
+                option.textContent = displayName;
+                youtubeLangSelect.appendChild(option);
+            });
+
+            if (tracks.length > 0) {
+                youtubeLangSelectorContainer.classList.remove('hidden');
+                showToast('成功讀取字幕列表！', { type: 'success' });
+            }
+
+        } catch (error) {
+            showToast(error.message, { type: 'error', duration: 5000 });
+        } finally {
+            setFetchButtonLoading(false);
+        }
+    }
+
+    async function handleGetYoutubeSrt() {
+        const selectedBaseUrl = youtubeLangSelect.value;
+        if (!selectedBaseUrl) {
+            showToast('請先選擇一個字幕語言。', { type: 'error' });
+            return;
+        }
+
+        showModal({ title: '正在從 YouTube 下載字幕...', showProgressBar: true });
+
+        try {
+            const srtContent = await downloadYouTubeSubtitle(selectedBaseUrl);
+            smartArea.value = srtContent;
+            smartArea.dispatchEvent(new Event('input')); // Trigger input event to update char count and other UI
+            
+            hideModal();
+            showToast('成功載入 YouTube 字幕！', { type: 'success' });
+            
+            resetYoutubeImporter(); // Reset and hide the YouTube importer UI after success
+
+        } catch (error) {
+            hideModal();
+            showToast(error.message, { type: 'error', duration: 5000 });
+        }
     }
 
     // --- 事件監聽 ---
@@ -337,6 +426,10 @@ function initializeTab1() {
             deleteRule(parseInt(deleteBtn.dataset.index, 10));
         }
     });
+
+    // YouTube Importer Listeners
+    fetchYoutubeInfoBtn.addEventListener('click', handleFetchYoutubeInfo);
+    getYoutubeSrtBtn.addEventListener('click', handleGetYoutubeSrt);
 
     // --- 初始化 ---
     timestampThresholdInput.disabled = !fixTimestampsCheckbox.checked;
