@@ -3,7 +3,8 @@ const fetch = require('node-fetch');
 
 // We use a public Invidious instance as a proxy to fetch YouTube data.
 // This is more reliable against YouTube's blocking measures.
-const INVIDIOUS_INSTANCE = 'https://invidious.io.gg';
+// The old instance was down, switching to a more reliable one.
+const INVIDIOUS_INSTANCE = 'https://vid.puffyan.us';
 
 exports.handler = async (event, context) => {
     const { videoId } = event.queryStringParameters;
