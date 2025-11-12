@@ -104,6 +104,9 @@ function resetYoutubeImporter() {
     youtubeLangSelectorContainer.classList.add('hidden');
     youtubeLangSelect.innerHTML = '';
     currentVideoId = null; // 清除 videoId
+    // Ensure the button text is reset to the new default if it was changed by a loading state
+    getYoutubeSrtBtn.textContent = '前往下載字幕';
+    getYoutubeSrtBtn.classList.remove('btn-loading'); // Remove loading class if present
 }
 
 // --- 清除函式 ---
@@ -381,22 +384,16 @@ function initializeTab1() {
             return;
         }
 
-        showModal({ title: '正在從 YouTube 下載字幕...', showProgressBar: true });
+        // Construct the URL for the external downloader
+        const youtubeWatchUrl = `https://www.youtube.com/watch?v=${currentVideoId}`;
+        const externalDownloaderUrl = `https://downsub.com/?url=${encodeURIComponent(youtubeWatchUrl)}&lang=${selectedLang}`;
 
-        try {
-            const srtContent = await downloadYouTubeSubtitle(currentVideoId, selectedLang);
-            smartArea.value = srtContent;
-            smartArea.dispatchEvent(new Event('input')); // Trigger input event to update char count and other UI
-            
-            hideModal();
-            showToast('成功載入 YouTube 字幕！', { type: 'success' });
-            
-            resetYoutubeImporter(); // Reset and hide the YouTube importer UI after success
-
-        } catch (error) {
-            hideModal();
-            showToast(error.message, { type: 'error', duration: 5000 });
-        }
+        // Open in a new tab
+        window.open(externalDownloaderUrl, '_blank');
+        
+        showToast('已在新分頁開啟字幕下載網站，請手動下載後拖曳至此。', { type: 'info', duration: 8000 });
+        
+        resetYoutubeImporter(); // Reset and hide the YouTube importer UI after action
     }
 
     // --- 事件監聽 ---

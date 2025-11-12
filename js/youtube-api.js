@@ -49,33 +49,3 @@ async function fetchYouTubeSubtitles(videoUrl) {
         throw error;
     }
 }
-
-/**
- * Downloads the content of a specific subtitle track using the scraper function.
- * @param {string} videoId The ID of the YouTube video.
- * @param {string} lang The language code of the subtitle track to download.
- * @returns {Promise<string>} A promise that resolves to the subtitle content in SRT format.
- */
-async function downloadYouTubeSubtitle(videoId, lang) {
-    if (!videoId || !lang) {
-        throw new Error("無效的 videoId 或語言代碼。");
-    }
-    
-    const functionUrl = `/.netlify/functions/download-youtube-subtitle?videoId=${videoId}&lang=${lang}`;
-
-    try {
-        const response = await fetch(functionUrl);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: `伺服器發生錯誤，狀態碼: ${response.status}` }));
-            throw new Error(errorData.error || `無法下載字幕內容。`);
-        }
-
-        const srtContent = await response.text();
-        return srtContent;
-
-    } catch (error) {
-        console.error("Error in downloadYouTubeSubtitle:", error);
-        throw error;
-    }
-}
