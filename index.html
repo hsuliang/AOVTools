@@ -55,6 +55,28 @@
                                 <h3 class="text-lg font-semibold heading-color">字幕來源</h3>
                                 <a href="https://tinyurl.com/gsyan-faster-whisper" target="_blank" rel="noopener" class="upload-link text-sm ml-2">如何取得字幕？</a>
                             </div>
+
+                            <!-- YouTube Subtitle Fetcher -->
+                            <div id="youtube-importer" class="my-2 p-3 rounded-md bg-[var(--gray-bg)] border border-[var(--card-border)]">
+                                <label for="youtube-url-input" class="block font-semibold mb-2 text-base">從 YouTube 網址匯入</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="youtube-url-input" placeholder="貼上 YouTube 影片網址..." class="w-full p-2 rounded">
+                                    <button id="fetch-youtube-info-btn" class="font-bold py-2 px-4 rounded btn-secondary whitespace-nowrap flex items-center justify-center w-24">
+                                        <span id="fetch-btn-text">讀取</span>
+                                        <svg id="fetch-loader" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div id="youtube-language-selector-container" class="mt-3 hidden">
+                                    <label for="youtube-language-select" class="block text-sm font-medium mb-1">請選擇字幕語言：</label>
+                                    <select id="youtube-language-select" class="w-full p-2 rounded bg-[var(--bg-color)] border border-[var(--card-border)]"></select>
+                                    <button id="get-youtube-srt-btn" class="w-full font-bold py-2 px-4 rounded btn-primary mt-2">取得字幕</button>
+                                </div>
+                            </div>
+                            <p class="text-center text-sm text-[var(--gray-text)] my-2">或</p>
+
                             <div id="view-toggle-header" class="flex justify-between items-center mb-2 border-b border-[var(--card-border)] hidden flex-shrink-0">
                                 <div class="flex">
                                     <button class="view-btn" data-view="original">原始內容</button>
