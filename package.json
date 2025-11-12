@@ -1,0 +1,16 @@
+{
+  "name": "yttb-1110",
+  "version": "1.0.0",
+  "description": "歡迎使用「ㄚ亮笑長的 Youtube 工具一條龍」！這是一個專為 YouTube 內容創作者、Podcaster 和教育工作者設計的全方位內容再利用 (Repurpose) 工具。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
