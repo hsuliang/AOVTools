@@ -1,75 +1,50 @@
 // netlify/functions/get-youtube-subtitles.js
-
-// To use external packages like 'node-fetch', you'll need to create a package.json
-// in your project's root directory and add them as dependencies.
-// You can do this by running: npm init -y && npm install node-fetch
-const fetch = require('node-fetch');
+const ytdl = require('ytdl-core');
 
 exports.handler = async (event, context) => {
-    // Get the videoId from the query string parameters passed from the frontend
     const { videoId } = event.queryStringParameters;
 
-    // Securely access the API key from Netlify's environment variables
-    const apiKey = process.env.YOUTUBE_API_KEY;
-
-    // Validate that the videoId was provided
-    if (!videoId) {
+    if (!videoId || !ytdl.validateID(videoId)) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ error: 'Missing videoId parameter' }),
+            body: JSON.stringify({ error: '無效或遺失 YouTube 影片 ID。' }),
         };
     }
-
-    // Validate that the API key is configured on Netlify
-    if (!apiKey) {
-        // This is a server-side error, so we return a 500 status code
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'YouTube API key is not configured on the server.' }),
-        };
-    }
-
-    // The YouTube Data API v3 endpoint to list caption tracks for a video
-    const apiUrl = `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`;
 
     try {
-        // Call the YouTube API
-        const response = await fetch(apiUrl);
-        const data = await response.json();
+        const info = await ytdl.getInfo(videoId);
+        
+        const tracks = info.player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
-        // Handle potential errors returned by the YouTube API itself
-        if (data.error) {
-            console.error('YouTube API Error:', data.error.message);
+        if (!tracks || tracks.length === 0) {
             return {
-                statusCode: data.error.code || 500,
-                body: JSON.stringify({ error: `YouTube API Error: ${data.error.message}` }),
+                statusCode: 404,
+                body: JSON.stringify({ error: '找不到這部影片的任何字幕軌道。' }),
             };
         }
 
-        // The API returns an `items` array. We map over it to create a cleaner list
-        // of available subtitle tracks for the frontend.
-        const captionTracks = data.items.map(item => ({
-            lang: item.snippet.language,
-            name: item.snippet.name,
-            // The `vssId` is what YouTube uses to identify the track format, e.g., ".srt", ".vtt"
-            // We might need this later to download the actual subtitle file.
-            vssId: item.snippet.trackKind, 
-            trackId: item.id,
+        // Map the tracks to a cleaner format for the frontend
+        const availableTracks = tracks.map(track => ({
+            name: track.name.simpleText,
+            lang: track.languageCode,
+            // The baseUrl is the direct URL to the timed text (XML) file.
+            // We will pass this to our next function.
+            baseUrl: track.baseUrl, 
         }));
 
         return {
             statusCode: 200,
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json; charset=utf-8',
             },
-            body: JSON.stringify(captionTracks),
+            body: JSON.stringify(availableTracks),
         };
 
     } catch (error) {
-        console.error('Error fetching data from YouTube API:', error);
+        console.error('Error fetching video info with ytdl-core:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to fetch data from the YouTube API.' }),
+            body: JSON.stringify({ error: '讀取影片資訊時發生錯誤。該影片可能為私人、不存在或已停用字幕。' }),
         };
     }
 };
