@@ -1,20 +1,31 @@
 // netlify/functions/get-youtube-subtitles.js
-const ytdl = require('ytdl-core');
+const fetch = require('node-fetch');
+
+// We use a public Invidious instance as a proxy to fetch YouTube data.
+// This is more reliable against YouTube's blocking measures.
+const INVIDIOUS_INSTANCE = 'https://invidious.io.gg';
 
 exports.handler = async (event, context) => {
     const { videoId } = event.queryStringParameters;
 
-    if (!videoId || !ytdl.validateID(videoId)) {
+    if (!videoId) {
         return {
             statusCode: 400,
             body: JSON.stringify({ error: '無效或遺失 YouTube 影片 ID。' }),
         };
     }
 
+    const apiUrl = `${INVIDIOUS_INSTANCE}/api/v1/videos/${videoId}?fields=captionTracks`;
+
     try {
-        const info = await ytdl.getInfo(videoId);
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            // Handle cases where the video is not found or Invidious instance has an issue
+            throw new Error(`無法從代理服務獲取影片資訊，狀態碼: ${response.status}`);
+        }
         
-        const tracks = info.player_response?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        const data = await response.json();
+        const tracks = data.captionTracks;
 
         if (!tracks || tracks.length === 0) {
             return {
@@ -23,13 +34,13 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Map the tracks to a cleaner format for the frontend
+        // Map the tracks to the format our frontend expects.
         const availableTracks = tracks.map(track => ({
-            name: track.name.simpleText,
-            lang: track.languageCode,
-            // The baseUrl is the direct URL to the timed text (XML) file.
-            // We will pass this to our next function.
-            baseUrl: track.baseUrl, 
+            name: track.label,
+            lang: track.language_code,
+            // Construct the full, direct URL to the SRT file via the Invidious API.
+            // The `&fmt=srt` parameter tells Invidious to convert the subtitles to SRT format.
+            baseUrl: `${INVIDIOUS_INSTANCE}${track.url}&fmt=srt`, 
         }));
 
         return {
@@ -41,10 +52,10 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Error fetching video info with ytdl-core:', error);
+        console.error('Error fetching from Invidious API:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: '讀取影片資訊時發生錯誤。該影片可能為私人、不存在或已停用字幕。' }),
+            body: JSON.stringify({ error: error.message || '讀取影片資訊時發生未知錯誤。' }),
         };
     }
 };
